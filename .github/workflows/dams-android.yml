@@ -1,4 +1,4 @@
-name: DAMS Android Debug
+name: DAMS Android Release
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - dams/ci
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build arm64 release APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout core
@@ -36,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Build libbox
+      - name: Build libbox (arm64)
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
@@ -48,24 +48,65 @@ jobs:
       - name: Checkout Android client
         run: git submodule update --init --recursive clients/android
 
+      - name: Prepare release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE_BASE64"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > clients/android/app/release.keystore
+          ls -l clients/android/app/release.keystore
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
         with:
           cache-provider: basic
 
-      - name: Build debug APKs and run unit tests
+      - name: Run unit tests
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           mkdir -p clients/android/app/libs
-          cp libbox.aar libbox-legacy.aar clients/android/app/libs/
+          cp libbox.aar clients/android/app/libs/
           cd clients/android
-          ./gradlew --build-cache --parallel :app:testOtherDebugUnitTest :app:assembleOtherDebug :app:assembleOtherLegacyDebug
+          ./gradlew :app:testOtherDebugUnitTest
 
-      - name: Upload APKs
+      - name: Build release APK
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+          LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
+        run: |
+          cd clients/android
+          ./gradlew --build-cache :app:assembleOtherRelease
+
+      - name: Prepare artifact
+        run: |
+          mkdir -p dist
+          VERSION=$(grep '^VERSION_NAME=' clients/android/version.properties | cut -d= -f2)
+          APK=$(find clients/android/app/build/outputs/apk/other/release -name '*.apk' -type f | head -n1)
+          test -n "$APK"
+          cp "$APK" "dist/DAMS-TUNNEL-${VERSION}-arm64.apk"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          ls -lh dist
+          unzip -l "dist/DAMS-TUNNEL-${VERSION}-arm64.apk" | sort -k1 -nr | head -30
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dams-android-debug
-          path: |
-            clients/android/app/build/outputs/apk/other/debug/*.apk
-            clients/android/app/build/outputs/apk/otherLegacy/debug/*.apk
+          name: dams-android-arm64
+          path: dist/*.apk
+
+      - name: Publish pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ env.VERSION }}
+        run: |
+          TAG="dams-v${VERSION}-arm64"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.apk --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" dist/*.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "DAMS TUNNEL ${VERSION} (arm64)" \
+              --prerelease \
+              --notes "Build automatique de DAMS TUNNEL pour arm64-v8a. APK de test signé avec une clé de test."
+          fi
