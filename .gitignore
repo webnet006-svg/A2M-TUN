@@ -21,3 +21,11 @@
 CLAUDE.md
 AGENTS.md
 /.claude/
+
+# Hefesto: lo que no debe subir a GitHub
+Thumbs.db
+*.log
+*.tmp
+.agent/
+.papelera/
+/android-app/
