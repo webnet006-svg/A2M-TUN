@@ -30,6 +30,12 @@ jobs:
         with:
           ndk-version: r28
 
+      - name: Setup OpenJDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Build libbox
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
@@ -41,12 +47,6 @@ jobs:
 
       - name: Checkout Android client
         run: git submodule update --init --recursive clients/android
-
-      - name: Setup OpenJDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
