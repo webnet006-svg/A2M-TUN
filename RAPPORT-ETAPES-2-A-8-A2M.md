@@ -224,6 +224,17 @@ Retour utilisateur : UI « 3/10 ». Analyse des captures Play Store de SniTunnel
 3. Code mort restant (inaccessibles, non supprimés par prudence) : dialogues d'import Sing-box, branche `NavigationBar`/`NavigationRail` Sing-box, badge `hasUpdate`.
 4. Risques fonctionnels à tester sur appareil : import fichier via GetContent selon fournisseurs de fichiers ; per-app sans privilège (doit rester bloqué) ; groupes de sortie uniquement si connecté (comportement attendu).
 
+## Réglages façon SniTunnel (sous-module `97b9af3`, parent `4d504513`)
+
+Suite aux captures réelles fournies par l'utilisateur (Settings, Themes, Connection, Anti-censorship, Advanced Modes) :
+
+1. **Écran Réglages restructuré** : recherche pilule (filtre réel sur les sections), carte **« ID de cet appareil »** (ANDROID_ID réel + copie presse-papiers), sections « Apparence / Connexion / Réseau / À propos » avec **tuiles colorées** (bleu, vert, gris) et chevrons.
+2. **Sous-écrans dédiés** (routes `a2m/settings/connection` et `a2m/settings/dns`) : en-tête avec retour, titre plein, interrupteurs réels :
+   - Connexion : notification dynamique + contournement VPN (réels, avec reload du service).
+   - DNS : liste **lecture seule** des serveurs déclarés par la config active (`A2MProfileInfo.dnsServers`), avec la config source affichée.
+3. **Correction CI run `44019512961` (FAILURE)** : déclaration `fetchExitIp` dupliquée avec corps vide (résidu de nettoyage) + paramètre `rotate(angle=)` → `degrees=` (DrawScope).
+4. **Choix assumés (pas de faux réglages)** : TLS Fragment, Global SNI Override, bloqueur de pub, mode Gaming, Double VPN, Smart Battery Saver, sélecteur de thèmes Light/Dark de SniTunnel ne sont **pas** câblés dans notre moteur → volontairement absents plutôt que simulés. La tuile Quick Settings existe déjà (`bg/TileService.kt`), sans ligne dédiée.
+
 ## Latence colorée + test de groupe (poussé après le run `44014848330`)
 
 À la suite de la livraison, amélioration SniTunnel à données **réelles** uniquement :
