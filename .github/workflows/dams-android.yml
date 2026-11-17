@@ -28,25 +28,46 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Setup Go
+      - name: Setup Go (avec cache modules + build)
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: 1.26.10
-          cache: false
+          cache: true
 
+      # Le cache Gradle n'écrit jamais sur une branche non-défaut par défaut :
+      # on force read/write pour que la branche dams/ci peupler son cache.
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
+        with:
+          cache-provider: basic
+          cache-read-only: false
+
+      - name: Checkout Android client
+        run: git submodule update --init --depth 1 --recursive clients/android
+
+      # Clé = hash de toutes les sources Go + go.mod/sum + Makefile.
+      # Si aucun fichier Go n'a changé (bump sous-module, docs...),
+      # on réutilise les AAR construits au run précédent et on saute
+      # la construction libbox (double gomobile bind ≈ 15-30 min).
+      - name: Restore libbox artifacts
+        id: libbox-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            libbox.aar
+            libbox-legacy.aar
+          key: libbox-arm64-ndk-r28-go1.26.10-${{ hashFiles('go.mod', 'go.sum', 'Makefile', '**/*.go') }}
+
+      # Le NDK (téléchargement lourd) n'est utile que si on reconstruit libbox.
       - name: Setup Android NDK
+        if: steps.libbox-cache.outputs.cache-hit != 'true'
         id: setup-ndk
         uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779 # v1 (1.6.0)
         with:
           ndk-version: r28
 
-      - name: Setup OpenJDK
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
-        with:
-          distribution: temurin
-          java-version: 17
-
       - name: Build libbox (arm64)
+        if: steps.libbox-cache.outputs.cache-hit != 'true'
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
@@ -54,9 +75,6 @@ jobs:
           export PATH="$PATH:$(go env GOPATH)/bin"
           go run ./cmd/internal/build_libbox -target android -platform android/arm64
           ls -l libbox.aar libbox-legacy.aar
-
-      - name: Checkout Android client
-        run: git submodule update --init --recursive clients/android
 
       - name: Prepare release signing
         env:
@@ -66,27 +84,19 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > clients/android/app/release.keystore
           ls -l clients/android/app/release.keystore
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
-        with:
-          cache-provider: basic
-
       - name: Run unit tests
-        env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
         run: |
           mkdir -p clients/android/app/libs
           cp libbox.aar clients/android/app/libs/
           cd clients/android
-          ./gradlew :app:testOtherDebugUnitTest
+          ./gradlew :app:testOtherDebugUnitTest --parallel
 
       - name: Build release APK
         env:
-          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
         run: |
           cd clients/android
-          ./gradlew --build-cache :app:assembleOtherRelease
+          ./gradlew --build-cache :app:assembleOtherRelease --parallel
 
       - name: Cleanup signing material
         run: rm -f clients/android/app/release.keystore
