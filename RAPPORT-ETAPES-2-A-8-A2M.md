@@ -219,10 +219,33 @@ Retour utilisateur : UI « 3/10 ». Analyse des captures Play Store de SniTunnel
 - Run `44006689912` (sha `4d69c9db`) — FAILURE, 2 erreurs (`ContentPaste` import manquant ; `applicationInfo` nullable), corrigées dans `6ef807f`.
 - Run `44007788922` (sha `6878bb35`) — **SUCCESS** : `compileOtherDebugKotlin` ✅, `testOtherDebugUnitTest` ✅ **BUILD SUCCESSFUL (3m14s, incluant les 11 tests `A2MProfileInfoTest`)**, `assembleOtherRelease` ✅ **BUILD SUCCESSFUL (5m40s)**.
 
-1. **Compilation des étapes 3-8 non confirmée** — run CI de `03e70cbc` en cours ; toute erreur relevée sera corrigée avant l'étape 9.
+1. **Compilation des étapes 3-8 non confirmée** — ✅ levé : run `44007788922` vert.
 2. `A2M_TUN_HOME_ROUTE` (MainActivity) inutilisé et imports devenus inutiles (`UpdateAvailableDialog`, `UpdateState`, `Vendor`, `MarkdownText`) → warnings uniquement (pas de `allWarningsAsErrors` vérifié sur ce projet).
 3. Code mort restant (inaccessibles, non supprimés par prudence) : dialogues d'import Sing-box, branche `NavigationBar`/`NavigationRail` Sing-box, badge `hasUpdate`.
 4. Risques fonctionnels à tester sur appareil : import fichier via GetContent selon fournisseurs de fichiers ; per-app sans privilège (doit rester bloqué) ; groupes de sortie uniquement si connecté (comportement attendu).
 
-## Prochaine étape
-- **Étape 9** : vérifier run CI `03e70cbc` → corriger si erreur → tests complets + APK release arm64 + rapport final.
+## Verdicts CI de la refonte UI
+
+- Run `44013673751` (sous-module `f9dddb7`, parent `bf945ee1`) — FAILURE : déclaration dupliquée de `BackgroundMid` dans `A2MColors` (ajoutée deux fois à la main) → ambiguïtés en cascade sur tous les usages `A2MColors.BackgroundMid` (JournalScreen 228, RoutingScreen 507/551, ServersScreen 239).
+- Correctif : déclaration dupliquée supprimée (sous-module `b984ca0`, parent `44274cfc`).
+- Run `44014848330` — **SUCCESS** ✅ : `compileOtherDebugKotlin` ✅, tests unitaires ✅ (11 tests `A2MProfileInfoTest`), `assembleOtherRelease` ✅.
+
+## Étape 9 — Livraison et tests sur appareil
+
+**APK à installer : `DAMS-TUNNEL-1.15.0-alpha.13-arm64.apk`** (artifact du run `44014848330`, généré par `.github/workflows/dams-android.yml`, architecture arm64, version 1.15.0-alpha.13 / code 747).
+
+Cet APK contient la totalité du travail :
+1. Moteur réseau Sing-box **intact** (VPNService, BoxService, protocoles, profils, routage, DNS).
+2. Correctif **gVisor** : tag `with_gvisor` compilé dans libbox + fallback Kotlin `"stack": system` en cas d'erreur « not included in this build » + messages d'erreur traduits en français.
+3. UI A2M TUN complète : accueil teal façon SniTunnel (statut + serveur tappable, orbe avec chrono de session réel, cartes de débit, mini-stats, IP de sortie), Serveurs (import 3 modes, MàJ auto par abonnement), Routage (groupes live, per-app gated, DNS lecture seule), Réglages, Journal (auto-scroll), navigation 4 onglets.
+
+**Consignes de test sur appareil (dans l'ordre) :**
+1. Installer l'APK (désinstaller d'abord toute ancienne version si le VPN refuse de démarrer).
+2. Serveurs → importer un profil (lien abonnement / fichier / presse-papiers) → vérifier qu'il apparaît.
+3. Accueil → « Connecter » → autoriser le VPN → vérifier : statut « Connecté », chrono qui défile dans l'orbe, débits qui bougent.
+4. Vérifier l'IP de sortie affichée (elle doit différer de l'IP locale).
+5. Tester une config avec `stack: gvisor` ou `mixed` → doit démarrer sans erreur (correctif vérifié ; sinon le fallback Kotlin passe en `system` avec un message visible).
+6. Routage → groupes de sortie visibles et sélectionnables pendant la connexion ; per-app : doit rester bloqué sans Shizuku/root, et proposer « Demander l'autorisation Shizuku » sinon.
+7. Journal → vérifier le flux en direct et l'auto-scroll.
+8. Déconnexion → statut « Déconnecté », chrono et IP effacés.
+
