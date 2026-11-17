@@ -224,6 +224,15 @@ Retour utilisateur : UI « 3/10 ». Analyse des captures Play Store de SniTunnel
 3. Code mort restant (inaccessibles, non supprimés par prudence) : dialogues d'import Sing-box, branche `NavigationBar`/`NavigationRail` Sing-box, badge `hasUpdate`.
 4. Risques fonctionnels à tester sur appareil : import fichier via GetContent selon fournisseurs de fichiers ; per-app sans privilège (doit rester bloqué) ; groupes de sortie uniquement si connecté (comportement attendu).
 
+## Latence colorée + test de groupe (poussé après le run `44014848330`)
+
+À la suite de la livraison, amélioration SniTunnel à données **réelles** uniquement :
+
+1. **Ping coloré par serveur** dans les groupes de sortie (Routage) : pastille + valeur colorée — vert (≤ 120 ms, `A2MColors.Accent`), ambre (≤ 300 ms, `A2MColors.Amber`), rouge au-delà (`A2MColors.Danger`). Source : `GroupItem.urlTestDelay` de la config active (donnée du moteur, remplie seulement quand le tunnel tourne — comportement attendu, conforme à SniTunnel).
+2. **Bouton « Tester » par groupe** (icône speed) : déclenche `GroupsViewModel.urlTestGroup(group.tag)` (commande libbox réelle) avec spinner pendant `testingGroups`.
+
+Limitation assumée : la latence n'est disponible que pour les serveurs d'un groupe de la **config active** (pas pour la liste Serveurs à l'arrêt — libbox n'expose pas de délai hors connexion).
+
 ## Verdicts CI de la refonte UI
 
 - Run `44013673751` (sous-module `f9dddb7`, parent `bf945ee1`) — FAILURE : déclaration dupliquée de `BackgroundMid` dans `A2MColors` (ajoutée deux fois à la main) → ambiguïtés en cascade sur tous les usages `A2MColors.BackgroundMid` (JournalScreen 228, RoutingScreen 507/551, ServersScreen 239).
