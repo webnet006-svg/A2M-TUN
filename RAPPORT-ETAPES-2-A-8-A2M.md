@@ -159,7 +159,32 @@ Branche : parent `dams/ci`, sous-module `clients/android` branche `dev`
 
 ---
 
+## Correctif « gVisor is not included in this build » (remonté utilisateur, appareil réel)
+
+**Erreur runtime** : `start inbound/tun[tun-in]: gVisor is not included in this build, rebuild with -tags with_gvisor` — popup « Create service » au clic sur CONNECTER.
+
+**Cause racine** : `cmd/internal/build_libbox/main.go` (dépôt parent) ne contenait pas `with_gvisor` dans `sharedTags` — alors que `go.mod` inclut bien `github.com/sagernet/gvisor`. Les profils (locaux ou importés d'un abonnement) qui déclarent `"stack": "gvisor"` ou `"mixed"` pour l'inbound TUN échouaient au démarrage de l'inbound.
+
+### Correctifs appliqués (sous-module `002130f`, parent `c969e593`)
+
+1. **Étape 1 — Compilation Go (définitive)** : `with_gvisor` ajouté à `sharedTags` dans `cmd/internal/build_libbox/main.go`. S'applique à la variante principale (SDK 24) **et** à la variante legacy (SDK 21, via `filterTags`). La CI `dams-android.yml` reconstruit `libbox.aar` depuis ces sources à chaque run → le prochain APK embarque gVisor.
+2. **Étape 2 — Filet de sécurité Kotlin** (`bg/BoxService.kt`) :
+   - `Libbox.checkConfig(content)` ajouté avant `startOrReloadService` (échec propre et précoce).
+   - Si l'erreur contient « not included in this build » : réécriture automatique des inbounds TUN `"stack": "gvisor"|"mixed"` → `"system"` (helper `buildStackFallbackContent`, `org.json`) et **une seule** tentative de redémarrage ; avis affiché à l'utilisateur via `UiEvent.ErrorMessage`.
+3. **Étape 3 — UX & vérifications** :
+   - `friendlyServiceMessage()` dans `MainActivity.ServiceAlertDialog` : traduction des erreurs Go connues en français compréhensible ; les erreurs inconnues restent affichées telles quelles (diagnostic).
+   - Manifeste vérifié : `INTERNET`, `FOREGROUND_SERVICE` (+ types `SYSTEM_EXEMPTED`/`SPECIAL_USE`), `POST_NOTIFICATIONS`… ✅
+   - `checkConfig` était déjà appliqué à l'import (`ProfileImportHandler`, `NewProfileViewModel`) ✅
+
+**Note** : la pile `system` est fonctionnellement équivalente pour la majorité des profils ; le fallback ne se déclenche que si l'erreur réelle survient, jamais sur un noyau correct.
+
+### Limites
+- Le fichier `libbox.aar` n'est pas recompilable dans cet environnement (pas de Go/NDK local) — la validation du tag passe par la CI.
+- Le retry fallback n'est testable qu'en runtime réel ; il est conçu pour être inerte sur un noyau avec gVisor.
+
 ## Correctifs et améliorations appliqués après revue statique (commit `99f1314` + suivants)
+
+
 
 1. **`detectServiceMode()` est `suspend`** — appelé depuis la composition dans Routage et Réglages : erreur de compilation garantie. Corrigé via `LaunchedEffect` + état local (IO via `withContext`). (commit `97bee25`)
 2. **Redirection héritée vers Dashboard** : la `LaunchedEffect(allowedRoutes)` de MainActivity renvoyait toute route hors liste (donc `a2m/*`) vers le Dashboard Sing-box — l'ancienne UI aurait repris la main au premier rendu. Garde `currentRootRoute.startsWith(A2M_TUN_ROUTE_PREFIX) != true` ajoutée. (commit `99f1314`)
