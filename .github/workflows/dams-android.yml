@@ -4,15 +4,19 @@ on:
   push:
     branches:
       - dams/ci
+  # Builds de correction/tests à la demande, en parallèle des releases :
+  # ne publient jamais de release (voir condition sur l'étape Publish).
+  workflow_dispatch:
 
 # Lecture seule par défaut ; l'écriture (release) est accordée au seul job build.
 permissions:
   contents: read
 
-# Un seul build à la fois : les pushes rapprochés annulent le run en cours
-# au lieu de courir en parallèle sur le même tag de release.
+# Groupes séparés par type d'événement : un build manuel (correction)
+# en parallèle n'annule pas le build de release en cours, et inversement.
+# Les pushes rapprochés sur dams/ci s'annulent bien entre eux.
 concurrency:
-  group: dams-android
+  group: dams-android-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
@@ -59,7 +63,7 @@ jobs:
       # la construction libbox (double gomobile bind ≈ 15-30 min).
       - name: Restore libbox artifacts
         id: libbox-cache
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             libbox.aar
@@ -83,6 +87,18 @@ jobs:
           export PATH="$PATH:$(go env GOPATH)/bin"
           go run ./cmd/internal/build_libbox -target android -platform android/arm64
           ls -l libbox.aar libbox-legacy.aar
+
+      # Sauvegarde dès la compilation terminée : actions/cache ne sauvegarde
+      # qu'au succès complet du job, or un échec plus loin (lint, signature)
+      # ne doit pas condamner le cache et forcer la reconstruction au run suivant.
+      - name: Save libbox artifacts
+        if: steps.libbox-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            libbox.aar
+            libbox-legacy.aar
+          key: libbox-arm64-ndk-r28-go1.26.10-${{ hashFiles('go.mod', 'go.sum', 'Makefile', '**/*.go') }}
 
       - name: Prepare release signing
         env:
@@ -130,6 +146,9 @@ jobs:
           path: dist/*
 
       - name: Publish pre-release
+        # Publication uniquement pour un push réel sur dams/ci.
+        # Un build manuel (workflow_dispatch) produit l'artefact sans toucher la release.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dams/ci'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ env.VERSION }}
