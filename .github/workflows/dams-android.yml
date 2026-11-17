@@ -34,16 +34,18 @@ jobs:
           go-version: 1.26.10
           cache: true
 
+      - name: Checkout Android client
+        run: git submodule update --init --depth 1 --recursive clients/android
+
       # Le cache Gradle n'écrit jamais sur une branche non-défaut par défaut :
-      # on force read/write pour que la branche dams/ci peupler son cache.
+      # on force read/write pour que la branche dams/ci peuple son cache.
+      # Doit venir APRÈS le checkout du sous-module : la clé de cache hache
+      # les fichiers *.gradle* / gradle-wrapper.properties de clients/android.
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92
         with:
           cache-provider: basic
           cache-read-only: false
-
-      - name: Checkout Android client
-        run: git submodule update --init --depth 1 --recursive clients/android
 
       # Clé = hash de toutes les sources Go + go.mod/sum + Makefile.
       # Si aucun fichier Go n'a changé (bump sous-module, docs...),
