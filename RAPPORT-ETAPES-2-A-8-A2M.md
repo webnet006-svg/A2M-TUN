@@ -182,6 +182,23 @@ Branche : parent `dams/ci`, sous-module `clients/android` branche `dev`
 - Le fichier `libbox.aar` n'est pas recompilable dans cet environnement (pas de Go/NDK local) — la validation du tag passe par la CI.
 - Le retry fallback n'est testable qu'en runtime réel ; il est conçu pour être inerte sur un noyau avec gVisor.
 
+## Refonte UI « professionnelle » inspirée de SniTunnel (sous-module `f9dddb7`, parent `bf945ee1`)
+
+Retour utilisateur : UI « 3/10 ». Analyse des captures Play Store de SniTunnel (référence fournie par l'utilisateur) et refonte avec notre identité propre (aucun logo/artwork copié) :
+
+1. **Design system** (`A2MTheme.kt`) : accent teal/menthe (`#16E0C4`), fond quasi-noir bleuté, surfaces dégradées subtiles, bordures discrètes (`#1B3540`), formes standardisées (`A2MShapes` : carte 20dp, tuile 14dp, pastille 999dp). Les 5 écrans + barre de navigation héritent des mêmes tokens.
+2. **Accueil** (rewrite complet, signature et logique inchangées — start/stop pilotés par l'état réel) :
+   - en-tête façon SniTunnel : statut réel coloré (« Connecté/Déconnecté/Échec ») + **serveur actif tappable** → page Serveurs
+   - orbe central 188dp avec **chrono de session réel dans le cercle** (démarre au passage réel à `Status.Started`), halo respirant uniquement quand le tunnel est actif, anneau animé
+   - **2 grandes cartes de débit** (↓ Réception / ↑ Envoi, valeurs du DashboardViewModel) + rangée **mini-stats** (totaux + session)
+   - carte IP compacte conservée (monospace, bouton refresh en icône — plus de glyphe `↻`)
+3. **Harmonisation des 4 autres écrans** : titres en casse de phrase + SemiBold (plus de majuscules criardes), rayons 25dp→20dp, icônes redimensionnées (tuile 42dp/icône 20dp), chevrons en vraies icônes.
+4. **Barre de navigation** : fond sombre opaque, indicateur discret, libellés 11sp, couleurs unselected assombries.
+
+### Choix assumés
+- Accent déplacé cyan→teal à la demande (imitation SniTunnel) ; `A2MColors.Cyan` renommé `A2MColors.Accent` (sed sur 5 fichiers).
+- Le chrono est une mesure réelle (timestamp du passage à `Started`), pas un ornement visuel.
+
 ## Correctifs et améliorations appliqués après revue statique (commit `99f1314` + suivants)
 
 
