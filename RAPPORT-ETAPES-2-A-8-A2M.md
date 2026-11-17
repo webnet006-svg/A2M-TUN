@@ -224,7 +224,7 @@ Retour utilisateur : UI « 3/10 ». Analyse des captures Play Store de SniTunnel
 3. Code mort restant (inaccessibles, non supprimés par prudence) : dialogues d'import Sing-box, branche `NavigationBar`/`NavigationRail` Sing-box, badge `hasUpdate`.
 4. Risques fonctionnels à tester sur appareil : import fichier via GetContent selon fournisseurs de fichiers ; per-app sans privilège (doit rester bloqué) ; groupes de sortie uniquement si connecté (comportement attendu).
 
-## Réglages façon SniTunnel (sous-module `97b9af3`, parent `4d504513`)
+## Réglages façon SniTunnel (sous-module `97b9af3` → `a945446`, parent `4d504513` → `05c7c035`)
 
 Suite aux captures réelles fournies par l'utilisateur (Settings, Themes, Connection, Anti-censorship, Advanced Modes) :
 
@@ -234,6 +234,8 @@ Suite aux captures réelles fournies par l'utilisateur (Settings, Themes, Connec
    - DNS : liste **lecture seule** des serveurs déclarés par la config active (`A2MProfileInfo.dnsServers`), avec la config source affichée.
 3. **Correction CI run `44019512961` (FAILURE)** : déclaration `fetchExitIp` dupliquée avec corps vide (résidu de nettoyage) + paramètre `rotate(angle=)` → `degrees=` (DrawScope).
 4. **Choix assumés (pas de faux réglages)** : TLS Fragment, Global SNI Override, bloqueur de pub, mode Gaming, Double VPN, Smart Battery Saver, sélecteur de thèmes Light/Dark de SniTunnel ne sont **pas** câblés dans notre moteur → volontairement absents plutôt que simulés. La tuile Quick Settings existe déjà (`bg/TileService.kt`), sans ligne dédiée.
+5. **Itérations CI de cette passe** : run `44019512961` FAILURE (`fetchExitIp` dupliqué à corps vide + `rotate(angle=)` → `degrees=`) ; run `44020599803` FAILURE (import `Box` manquant dans Réglages) ; correctifs poussés dans `97b9af3` → `a945446`.
+6. **« Sélectionner le plus rapide »** (⚡ par groupe de sortie, Routage) : réel — sélectionne l'élément avec la plus petite `urlTestDelay` mesurée (`selectGroupItem`) ; si aucune latence connue, lance d'abord le test du groupe.
 
 ## Latence colorée + test de groupe (poussé après le run `44014848330`)
 
