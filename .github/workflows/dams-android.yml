@@ -5,33 +5,43 @@ on:
     branches:
       - dams/ci
 
+# Lecture seule par défaut ; l'écriture (release) est accordée au seul job build.
 permissions:
-  contents: write
+  contents: read
+
+# Un seul build à la fois : les pushes rapprochés annulent le run en cours
+# au lieu de courir en parallèle sur le même tag de release.
+concurrency:
+  group: dams-android
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build arm64 release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout core
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: 1.26.10
           cache: false
 
       - name: Setup Android NDK
         id: setup-ndk
-        uses: nttld/setup-ndk@v1
+        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779 # v1 (1.6.0)
         with:
           ndk-version: r28
 
       - name: Setup OpenJDK
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
           java-version: 17
@@ -78,6 +88,9 @@ jobs:
           cd clients/android
           ./gradlew --build-cache :app:assembleOtherRelease
 
+      - name: Cleanup signing material
+        run: rm -f clients/android/app/release.keystore
+
       - name: Prepare artifact
         run: |
           mkdir -p dist
@@ -86,14 +99,17 @@ jobs:
           test -n "$APK"
           cp "$APK" "dist/DAMS-TUNNEL-${VERSION}-arm64.apk"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          ls -lh dist
+          cd dist
+          sha256sum "DAMS-TUNNEL-${VERSION}-arm64.apk" > SHA256SUMS.txt
+          ls -lh
+          cd ..
           unzip -l "dist/DAMS-TUNNEL-${VERSION}-arm64.apk" | sort -k1 -nr | head -30
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dams-android-arm64
-          path: dist/*.apk
+          path: dist/*
 
       - name: Publish pre-release
         env:
@@ -102,11 +118,11 @@ jobs:
         run: |
           TAG="dams-v${VERSION}-arm64"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/*.apk --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$TAG" dist/*.apk dist/SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$TAG" dist/*.apk \
+            gh release create "$TAG" dist/*.apk dist/SHA256SUMS.txt \
               --repo "$GITHUB_REPOSITORY" \
               --title "DAMS TUNNEL ${VERSION} (arm64)" \
               --prerelease \
-              --notes "Build automatique de DAMS TUNNEL pour arm64-v8a. APK de test signé avec une clé de test."
+              --notes "Build automatique de DAMS TUNNEL pour arm64-v8a. APK de test signé avec une clé de test. Somme de contrôle : SHA256SUMS.txt."
           fi

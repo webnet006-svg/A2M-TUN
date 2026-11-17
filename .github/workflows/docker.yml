@@ -5,9 +5,11 @@ on:
   #  branches:
   #    - stable
   #    - testing
-  release:
-    types:
-      - published
+  #release:
+  #  types:
+  #    - published
+  # Déclencheur release désactivé (fork) : sans lui, chaque pre-release `dams-v*`
+  # déclenchait les builds Docker upstream (ghcr.io/sagernet) inutiles.
   workflow_dispatch:
     inputs:
       tag:
