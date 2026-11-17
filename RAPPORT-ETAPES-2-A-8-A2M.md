@@ -7,8 +7,8 @@ Branche : parent `dams/ci`, sous-module `clients/android` branche `dev`
 |---|---|---|---|
 | 1 — Routes/navigation A2M | `26aac39` | `675ca0f9` | ✅ CI SUCCESS (run `43668695416`) |
 | 2 — Page Serveurs + carte accueil | `1c61d0e` | `1c0b2ead` | ✅ CI SUCCESS (run `43669976595`) |
-| 3-8 — Import, Routage, Réglages, Journal, Connexion, Nettoyage | `b9979ee` | `03e70cbc` | ❌ CI FAILURE (run `44006689912`) — 2 erreurs de compilation, corrigées |
-| Correctifs compilation | `6ef807f` | `6878bb35` | ⏳ CI en cours |
+| 3-8 — Import, Routage, Réglages, Journal, Connexion, Nettoyage + correctifs | `6ef807f` | `6878bb35` | ✅ CI SUCCESS (run `44007788922`) — **11 tests unitaires passés + APK release compilé** |
+| Amélioration Shizuku Routage | `e69f5e8` | `c674fdb0` | ⏳ CI en cours (run final) |
 
 ⚠️ Honnêteté : les étapes 3-8 sont **implémentées mais non validées par un compilateur** au moment de la rédaction (réseau GitHub indisponible ~2h, puis poussé dès le retour ; CI lancée). Aucune affirmation de « ça compile » pour ces étapes tant que le run n'est pas vert. Aucun test fonctionnel Android réel n'est possible dans cet environnement (pas d'appareil/adb) — tout test est donc un test de compilation GitHub Actions.
 
@@ -172,10 +172,10 @@ Branche : parent `dams/ci`, sous-module `clients/android` branche `dev`
 
 ## Erreurs restantes / risques
 
-### CI run `44006689912` (sha `4d69c9db`) — FAILURE, corrigé dans `6ef807f`
-- `A2MRoutingScreen.kt:129` : `PackageInfo.applicationInfo` est **nullable** (API) — passage direct à `getApplicationLabel` refusé. Corrigé avec `?.let { … } ?: packageName`.
-- `A2MServersScreen.kt:254` : `Icons.Filled.ContentPaste` non résolu — import explicite `androidx.compose.material.icons.filled.ContentPaste` manquant (les icônes étendues exigent un import par symbole). Ajouté.
-- Ce sont les **2 seules erreurs** rapportées par `compileOtherDebugKotlin` ; le reste du module compilait.
+## Correctifs de compilation validés par la CI
+
+- Run `44006689912` (sha `4d69c9db`) — FAILURE, 2 erreurs (`ContentPaste` import manquant ; `applicationInfo` nullable), corrigées dans `6ef807f`.
+- Run `44007788922` (sha `6878bb35`) — **SUCCESS** : `compileOtherDebugKotlin` ✅, `testOtherDebugUnitTest` ✅ **BUILD SUCCESSFUL (3m14s, incluant les 11 tests `A2MProfileInfoTest`)**, `assembleOtherRelease` ✅ **BUILD SUCCESSFUL (5m40s)**.
 
 1. **Compilation des étapes 3-8 non confirmée** — run CI de `03e70cbc` en cours ; toute erreur relevée sera corrigée avant l'étape 9.
 2. `A2M_TUN_HOME_ROUTE` (MainActivity) inutilisé et imports devenus inutiles (`UpdateAvailableDialog`, `UpdateState`, `Vendor`, `MarkdownText`) → warnings uniquement (pas de `allWarningsAsErrors` vérifié sur ce projet).
