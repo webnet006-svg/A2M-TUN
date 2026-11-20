@@ -22,7 +22,8 @@ concurrency:
 jobs:
   build:
     name: Build arm64 release APK
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     permissions:
       contents: write
     steps:
@@ -123,6 +124,7 @@ jobs:
           ./gradlew --build-cache :app:assembleOtherRelease --parallel
 
       - name: Cleanup signing material
+        if: always()
         run: rm -f clients/android/app/release.keystore
 
       - name: Prepare artifact
@@ -153,12 +155,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ env.VERSION }}
         run: |
-          TAG="dams-v${VERSION}-arm64"
+          TAG="v${VERSION}"
           if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.apk dist/SHA256SUMS.txt --clobber --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$TAG" dist/*.apk dist/SHA256SUMS.txt \
               --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
               --title "DAMS TUNNEL ${VERSION} (arm64)" \
               --prerelease \
               --notes "Build automatique de DAMS TUNNEL pour arm64-v8a. APK de test signé avec une clé de test. Somme de contrôle : SHA256SUMS.txt."
