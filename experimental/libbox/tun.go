@@ -171,9 +171,15 @@ func (o *tunOptions) GetHTTPProxyServerPort() int32 {
 }
 
 func (o *tunOptions) GetHTTPProxyBypassDomain() StringIterator {
+	if o.TunPlatformOptions.HTTPProxy == nil {
+		return newIterator([]string{})
+	}
 	return newIterator(o.TunPlatformOptions.HTTPProxy.BypassDomain)
 }
 
 func (o *tunOptions) GetHTTPProxyMatchDomain() StringIterator {
+	if o.TunPlatformOptions.HTTPProxy == nil {
+		return newIterator([]string{})
+	}
 	return newIterator(o.TunPlatformOptions.HTTPProxy.MatchDomain)
 }
