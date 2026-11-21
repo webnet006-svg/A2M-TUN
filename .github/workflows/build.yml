@@ -835,6 +835,7 @@ jobs:
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
+          CI_ANDROID_DEBUG_SIGNING: "true"
       - name: Prepare upload
         run: |-
           mkdir -p dist
