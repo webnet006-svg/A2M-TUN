@@ -52,6 +52,8 @@ jobs:
         with:
           ref: ${{ steps.ref.outputs.ref }}
           fetch-depth: 0
+      - name: Fetch version tags
+        run: git fetch --force --tags origin
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
