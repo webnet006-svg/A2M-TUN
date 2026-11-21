@@ -23,7 +23,7 @@ func latestTag() (string, error) {
 }
 
 func ReadTag() (string, error) {
-	currentTag, err := shell.Exec("git", "describe", "--tags").ReadOutput()
+	currentTag, err := shell.Exec("git", "describe", "--tags", "--match", "v[0-9]*").ReadOutput()
 	if err != nil {
 		currentTag, err = latestTag()
 		if err != nil {
@@ -33,7 +33,7 @@ func ReadTag() (string, error) {
 		version := badversion.Parse(strings.TrimPrefix(currentTag, "v"))
 		return version.String() + "-" + shortCommit, nil
 	}
-	currentTagRev, _ := shell.Exec("git", "describe", "--tags", "--abbrev=0").ReadOutput()
+	currentTagRev, _ := shell.Exec("git", "describe", "--tags", "--match", "v[0-9]*", "--abbrev=0").ReadOutput()
 	if currentTagRev == currentTag {
 		return currentTag[1:], nil
 	}
@@ -43,12 +43,12 @@ func ReadTag() (string, error) {
 }
 
 func ReadTagVersionRev() (badversion.Version, error) {
-	currentTagRev := common.Must1(shell.Exec("git", "describe", "--tags", "--abbrev=0").ReadOutput())
+	currentTagRev := common.Must1(shell.Exec("git", "describe", "--tags", "--match", "v[0-9]*", "--abbrev=0").ReadOutput())
 	return badversion.Parse(currentTagRev[1:]), nil
 }
 
 func ReadTagVersion() (badversion.Version, error) {
-	currentTag, err := shell.Exec("git", "describe", "--tags").ReadOutput()
+	currentTag, err := shell.Exec("git", "describe", "--tags", "--match", "v[0-9]*").ReadOutput()
 	if err != nil {
 		currentTag, err = latestTag()
 		if err != nil {
@@ -58,7 +58,7 @@ func ReadTagVersion() (badversion.Version, error) {
 		version.Patch++
 		return version, nil
 	}
-	currentTagRev := common.Must1(shell.Exec("git", "describe", "--tags", "--abbrev=0").ReadOutput())
+	currentTagRev := common.Must1(shell.Exec("git", "describe", "--tags", "--match", "v[0-9]*", "--abbrev=0").ReadOutput())
 	version := badversion.Parse(currentTagRev[1:])
 	if currentTagRev != currentTag {
 		if version.PreReleaseIdentifier == "" {
