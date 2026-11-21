@@ -85,7 +85,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
   build:
     name: Build binary
-    if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary'
+    if: github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Binary')
     runs-on: ubuntu-26.04
     needs:
       - calculate_version
@@ -472,7 +472,7 @@ jobs:
           path: "dist"
   build_darwin:
     name: Build Darwin binaries
-    if: ${{ !failure() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary') }}
+    if: ${{ !failure() && !cancelled() && github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Binary') }}
     runs-on: macos-latest
     needs:
       - calculate_version
@@ -573,7 +573,7 @@ jobs:
           path: "dist"
   build_windows:
     name: Build Windows binaries
-    if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Binary'
+    if: github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Binary')
     runs-on: windows-latest
     needs:
       - calculate_version
@@ -954,7 +954,7 @@ jobs:
           LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
   build_windows_client:
     name: Build Windows client (${{ matrix.desktop_arch }})
-    if: (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable'
+    if: github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Windows') && github.ref != 'refs/heads/oldstable'
     runs-on: windows-latest
     needs:
       - calculate_version
@@ -1071,7 +1071,7 @@ jobs:
           path: 'dist'
   build_linux_client:
     name: Build Linux client (${{ matrix.desktop_arch }})
-    if: (github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable'
+    if: github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Linux') && github.ref != 'refs/heads/oldstable'
     runs-on: ubuntu-26.04
     needs:
       - calculate_version
@@ -1244,7 +1244,7 @@ jobs:
   build_apple_library:
     name: Build Apple library (${{ matrix.artifact }})
     runs-on: ${{ matrix.build && 'xcode-27' || 'ubuntu-latest' }}
-    if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak'
+    if: github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Apple' || inputs.build == 'Apple-release' || inputs.build == 'iOS' || inputs.build == 'macOS' || inputs.build == 'tvOS' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')
     needs:
       - calculate_version
     strategy:
@@ -1315,7 +1315,7 @@ jobs:
   build_apple:
     name: Build Apple release clients
     runs-on: ${{ matrix.if && 'xcode-27' || 'ubuntu-latest' }}
-    if: github.event_name != 'workflow_dispatch' || inputs.build == 'All' || inputs.build == 'Apple-release' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak'
+    if: github.event_name == 'workflow_dispatch' && (inputs.build == 'All' || inputs.build == 'Apple-release' || inputs.build == 'macOS-standalone' || inputs.build == 'iOS-jailbreak')
     needs:
       - calculate_version
       - build_apple_library

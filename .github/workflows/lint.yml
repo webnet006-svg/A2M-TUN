@@ -30,26 +30,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - goos: windows
-            goarch: amd64
-          - goos: windows
-            goarch: '386'
-          - goos: windows
-            goarch: arm64
           - goos: linux
             goarch: amd64
-          - goos: linux
-            goarch: arm64
-          - goos: linux
-            goarch: arm
-          - goos: linux
-            goarch: '386'
-          - goos: darwin
-            goarch: amd64
-          - goos: darwin
-            goarch: arm64
-          - goos: android
-            goarch: arm64
         #  - goos: freebsd
         #    goarch: amd64
     steps:
