@@ -802,16 +802,6 @@ jobs:
         run: |-
           go run ./cmd/internal/merge_aar -output libbox.aar libbox-inputs/*/libbox.aar
           go run ./cmd/internal/merge_aar -output libbox-legacy.aar libbox-inputs/*/libbox-legacy.aar
-      - name: Checkout main branch
-        if: github.ref == 'refs/heads/stable' && github.event_name != 'workflow_dispatch'
-        run: |-
-          cd clients/android
-          git checkout main
-      - name: Checkout dev branch
-        if: github.ref == 'refs/heads/testing'
-        run: |-
-          cd clients/android
-          git checkout dev
       - name: Checkout submodule recursive
         run: |-
           cd clients/android
@@ -911,16 +901,6 @@ jobs:
         run: |-
           go run ./cmd/internal/merge_aar -output libbox.aar libbox-inputs/*/libbox.aar
           go run ./cmd/internal/merge_aar -output libbox-legacy.aar libbox-inputs/*/libbox-legacy.aar
-      - name: Checkout main branch
-        if: github.ref == 'refs/heads/stable' && github.event_name != 'workflow_dispatch'
-        run: |-
-          cd clients/android
-          git checkout main
-      - name: Checkout dev branch
-        if: github.ref == 'refs/heads/testing'
-        run: |-
-          cd clients/android
-          git checkout dev
       - name: Checkout submodule recursive
         run: |-
           cd clients/android
