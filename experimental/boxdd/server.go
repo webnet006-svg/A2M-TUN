@@ -101,10 +101,24 @@ func newDaemon() (*Daemon, error) {
 
 func (d *Daemon) listen() (net.Listener, error) {
 	if listenAddress != "" {
-		d.logger.Warn("listening on TCP address ", listenAddress, ": development only, no access control")
+		if err := validateDevelopmentListenAddress(listenAddress); err != nil {
+			return nil, err
+		}
+		d.logger.Warn("listening on loopback TCP address ", listenAddress, ": development only")
 		return net.Listen("tcp", listenAddress)
 	}
 	return listenEndpoint()
+}
+
+func validateDevelopmentListenAddress(address string) error {
+	resolved, err := net.ResolveTCPAddr("tcp", address)
+	if err != nil {
+		return E.Cause(err, "invalid development listen address")
+	}
+	if resolved.IP == nil || !resolved.IP.IsLoopback() {
+		return E.New("development TCP listener must use a loopback address; remote access has no authentication")
+	}
+	return nil
 }
 
 func (d *Daemon) Start() error {

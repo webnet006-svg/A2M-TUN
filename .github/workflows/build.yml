@@ -748,9 +748,11 @@ jobs:
         include:
           - variant: other
             task: :app:assembleOtherRelease
+            test_task: :app:testOtherReleaseUnitTest
             output: app/build/outputs/apk/other/release/*.apk
           - variant: other-legacy
             task: :app:assembleOtherLegacyRelease
+            test_task: :app:testOtherLegacyReleaseUnitTest
             output: app/build/outputs/apk/otherLegacy/release/*.apk
     steps:
       - name: Checkout
@@ -826,12 +828,12 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         run: |-
           go run -v ./cmd/internal/update_android_version --ci --nightly
-      - name: Build
+      - name: Android unit tests and APK build
         run: |-
           mkdir -p clients/android/app/libs
           cp *.aar clients/android/app/libs
           cd clients/android
-          ./gradlew --build-cache --parallel ${{ matrix.task }}
+          ./gradlew --build-cache --parallel ${{ matrix.test_task }} ${{ matrix.task }}
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
           LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}

@@ -61,6 +61,9 @@ type Server struct {
 }
 
 func NewServer(ctx context.Context, logFactory log.ObservableFactory, options option.ClashAPIOptions) (adapter.LifecycleService, error) {
+	if err := validateExternalController(options.ExternalController, options.Secret); err != nil {
+		return nil, err
+	}
 	trafficManager := service.PtrFromContext[trafficcontrol.Manager](ctx)
 	if trafficManager == nil {
 		return nil, E.New("missing traffic manager")
@@ -142,6 +145,25 @@ func NewServer(ctx context.Context, logFactory log.ObservableFactory, options op
 		})
 	}
 	return s, nil
+}
+
+// A controller without authentication is safe only when bound to loopback.
+// Remote controllers require a non-trivial secret before the listener is created.
+func validateExternalController(address, secret string) error {
+	if address == "" {
+		return nil
+	}
+	resolved, err := net.ResolveTCPAddr("tcp", address)
+	if err != nil {
+		return E.Cause(err, "invalid external controller address")
+	}
+	if resolved.IP != nil && resolved.IP.IsLoopback() {
+		return nil
+	}
+	if len(secret) < 16 {
+		return E.New("external controller on a non-loopback address requires a secret of at least 16 characters")
+	}
+	return nil
 }
 
 func (s *Server) Name() string {
