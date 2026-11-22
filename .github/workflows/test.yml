@@ -36,6 +36,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
+      - name: Checkout Android client
+        run: git submodule update --init clients/android
       - name: Verify Android backup policy
         run: python3 tools/verify_android_backup_policy.py
       - name: Setup Go
