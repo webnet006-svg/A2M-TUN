@@ -1,0 +1,102 @@
+name: Publish restored Android release
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Build run for the restored Android source
+        required: true
+        type: string
+        default: "45017931509"
+      tag:
+        description: New GitHub release tag
+        required: true
+        type: string
+        default: "v1.17.8"
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify the successful restored build
+        id: build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+          EXPECTED_HEAD_SHA: e2f2fffb46e926ab1e313a17007944ea9dc3ba8e
+        run: |
+          set -euo pipefail
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${BUILD_RUN_ID}")"
+          test "$(jq -r '.name' <<<"$run_json")" = "Build"
+          test "$(jq -r '.status' <<<"$run_json")" = "completed"
+          test "$(jq -r '.conclusion' <<<"$run_json")" = "success"
+          test "$(jq -r '.head_sha' <<<"$run_json")" = "$EXPECTED_HEAD_SHA"
+          echo "head_sha=$EXPECTED_HEAD_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Download APK artifacts from the verified run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.build_run_id }}
+          pattern: binary-android-apks-*
+          path: artifacts
+          merge-multiple: false
+
+      - name: Prepare release assets and notes
+        id: assets
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          for variant in other other-legacy; do
+            source_dir="artifacts/binary-android-apks-${variant}"
+            test -d "$source_dir"
+            count=0
+            while IFS= read -r -d '' apk; do
+              cp "$apk" "release-assets/${variant}-$(basename "$apk")"
+              count=$((count + 1))
+            done < <(find "$source_dir" -type f -name '*.apk' -print0)
+            test "$count" -gt 0
+            if test -f "$source_dir/SFA-version-metadata.json"; then
+              cp "$source_dir/SFA-version-metadata.json" "release-assets/${variant}-version-metadata.json"
+            fi
+          done
+          version="$(jq -r '.version_name' artifacts/binary-android-apks-other/SFA-version-metadata.json)"
+          cat > release-notes.md <<EOF
+          Version Android ${version}, construite depuis la restauration vérifiée.
+
+          - Source applicative : sous-module Android `64f7be92f43a776dd0d477c266d59d0d9dba2158`.
+          - Référence Build/Test : `1e5c09052cd456c7cd2a294cc502eedc845793b5`.
+          - Build APK validé : https://github.com/${GITHUB_REPOSITORY}/actions/runs/${{ inputs.build_run_id }}
+          - Test : https://github.com/${GITHUB_REPOSITORY}/actions/runs/45017160156
+          - Lint : https://github.com/${GITHUB_REPOSITORY}/actions/runs/45017160045
+          EOF
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_VERSION: ${{ steps.assets.outputs.version }}
+          BUILD_HEAD_SHA: ${{ steps.build.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release tag already exists: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          mapfile -t assets < <(find release-assets -maxdepth 1 -type f -print | sort)
+          test "${#assets[@]}" -gt 0
+          gh release create "$RELEASE_TAG" "${assets[@]}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$BUILD_HEAD_SHA" \
+            --title "A2M TUN Android ${RELEASE_VERSION}" \
+            --notes-file release-notes.md \
+            --prerelease
