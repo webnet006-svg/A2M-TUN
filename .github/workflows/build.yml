@@ -748,11 +748,11 @@ jobs:
         include:
           - variant: other
             task: :app:assembleOtherRelease
-            test_task: :app:testOtherReleaseUnitTest
+            test_task: :app:testOtherDebugUnitTest
             output: app/build/outputs/apk/other/release/*.apk
           - variant: other-legacy
             task: :app:assembleOtherLegacyRelease
-            test_task: :app:testOtherLegacyReleaseUnitTest
+            test_task: :app:testOtherLegacyDebugUnitTest
             output: app/build/outputs/apk/otherLegacy/release/*.apk
     steps:
       - name: Checkout
